@@ -3,13 +3,20 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::mpsc::channel;
+use serde::{Serialize, Deserialize};
+use crate::utils::save_alert;
 
-const LOG_PATH: &str = "/var/log/auth.log"; // Adapter selon ton OS
+const LOG_PATH: &str = "/var/log/auth.log";  
+
+#[derive(Serialize, Deserialize)]
+struct Alert {
+    ip: String,
+    message: String,
+    timestamp: String,
+}
 
 pub fn start_monitoring() {
     let (tx, rx) = channel();
-
-    // Création du watcher avec la nouvelle syntaxe
     let mut watcher: RecommendedWatcher =
         RecommendedWatcher::new(tx, notify::Config::default()).unwrap();
 
@@ -25,14 +32,14 @@ pub fn start_monitoring() {
                     ..
                 }) = event
                 {
-                    // Lire le fichier et analyser les logs SSH
                     let file = File::open(LOG_PATH).unwrap();
                     let reader = BufReader::new(file);
 
                     for line in reader.lines().filter_map(|l| l.ok()) {
-                        if let Some(ip) = parse_failed_ssh_attempt(&line) {
+                         if let Some(ip) = parse_failed_ssh_attempt(&line) {
                             println!("🚨 Tentative de brute-force détectée depuis {}", ip);
-                        }
+                            save_alert(ip);  // 🔥 Ajout de l'alerte dans alerts.json
+                         }
                     }
                 }
             }
