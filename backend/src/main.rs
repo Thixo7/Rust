@@ -6,10 +6,14 @@ use actix_web::{App, HttpServer};
 use actix_cors::Cors;
 use std::thread;
 use logs::monitor::start_monitoring;
+use utils::clean_old_alerts;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("🚀 Rust IDS démarré !");
+
+    // Nettoie les alertes de plus de 24h
+    clean_old_alerts(24);
 
     // Lancer la surveillance des logs dans un thread séparé
     thread::spawn(|| start_monitoring());
