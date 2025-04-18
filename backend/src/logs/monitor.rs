@@ -6,7 +6,7 @@ use std::sync::mpsc::channel;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc, Duration};
-use crate::utils::save_alert;
+use crate::utils::{save_alert, block_ip, is_ip_blocked};
 
 const LOG_PATH: &str = "/var/log/auth.log";
 const MAX_ATTEMPTS: usize = 5;
@@ -66,8 +66,12 @@ pub fn start_monitoring() {
                             if should_trigger_alert(&ip, &mut map) {
                                 println!("🚨 Tentative de brute-force détectée depuis {}", ip);
                                 save_alert(ip.clone());
-                                alerted.insert(ip, now); // On note que l’IP a été alertée
-                            }
+                                alerted.insert(ip.clone(), now);
+
+                                if !is_ip_blocked(&ip) {
+                                    block_ip(&ip);
+                                }
+                            } 
                         }
                     }
 

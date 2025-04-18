@@ -1,8 +1,8 @@
-use std::fs::{OpenOptions, self, File};
-use std::io::Write;
-use chrono::{DateTime, Duration, Utc};
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufReader, BufRead, Write};
+use std::process::Command;
+use chrono::{DateTime, Utc, Duration};
 use serde::{Serialize, Deserialize};
-use serde_json;
 
 const ALERTS_FILE: &str = "alerts.json";  // Emplacement du fichier JSON
 
@@ -57,4 +57,52 @@ pub fn clean_old_alerts(max_age_hours: i64) {
         let Ok(line) = serde_json::to_string(&alert) else { continue; };
         let _ = writeln!(file, "{}", line);
     }
+}
+
+pub fn block_ip(ip: &str) {
+    println!("🛑 [DEBUG] Tentative de blocage de l'IP : '{}'", ip);
+
+    if ip.trim().is_empty() {
+        println!("⚠️ IP vide, blocage annulé.");
+        return;
+    }
+
+    let _ = Command::new("sudo")
+        .arg("iptables")
+        .arg("-A")
+        .arg("INPUT")
+        .arg("-s")
+        .arg(ip)
+        .arg("-j")
+        .arg("DROP")
+        .output()
+        .unwrap_or_else(|e| {
+            panic!("❌ Erreur lors du blocage avec iptables : {:?}", e);
+        });
+
+    // Enregistrement dans blocked_ips.json
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("blocked_ips.json")
+        .unwrap();
+
+    writeln!(file, "{}", ip).unwrap();
+}
+
+pub fn is_ip_blocked(ip: &str) -> bool {
+    let file = match File::open("blocked_ips.json") {
+        Ok(f) => f,
+        Err(_) => return false, // Si le fichier n'existe pas encore → pas bloquée
+    };
+
+    let reader = BufReader::new(file);
+
+    for line in reader.lines().flatten() {
+        if line.trim() == ip {
+            return true;
+        }
+    }
+
+    false
 }
