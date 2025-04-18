@@ -106,3 +106,22 @@ pub fn is_ip_blocked(ip: &str) -> bool {
 
     false
 }
+
+pub fn get_blocked_ips() -> Vec<String> {
+    let file = match File::open("blocked_ips.json") {
+        Ok(f) => f,
+        Err(_) => return vec![], // Si le fichier n'existe pas encore
+    };
+
+    let reader = BufReader::new(file);
+    let mut ips = Vec::new();
+
+    for line in reader.lines().flatten() {
+        let ip = line.trim();
+        if !ip.is_empty() {
+            ips.push(ip.to_string());
+        }
+    }
+
+    ips
+}

@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use std::fs;
-use crate::utils::Alert; // Import de la structure Alert
+use crate::utils::{Alert, get_blocked_ips}; // Import de la structure Alert
 use serde_json;
 
 const ALERTS_FILE: &str = "alerts.json";  // Fichier contenant les alertes
@@ -19,7 +19,14 @@ async fn get_alerts() -> impl Responder {
     HttpResponse::Ok().json(alerts)  // Retourne les alertes en JSON
 }
 
+#[get("/blocked")]
+async fn get_blocked() -> impl Responder {
+    let ips = get_blocked_ips();
+    HttpResponse::Ok().json(ips)
+}
+
 // Fonction pour enregistrer les routes dans Actix-Web
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_alerts);
+    cfg.service(get_blocked);
 }
