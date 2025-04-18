@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use std::fs;
-use crate::utils::{Alert, get_blocked_ips}; // Import de la structure Alert
+use crate::utils::{Alert, get_blocked_ips, unblock_ip}; // Import de la structure Alert
 use serde_json;
 
 const ALERTS_FILE: &str = "alerts.json";  // Fichier contenant les alertes
@@ -25,8 +25,19 @@ async fn get_blocked() -> impl Responder {
     HttpResponse::Ok().json(ips)
 }
 
+async fn delete_blocked(ip: web::Path<String>) -> HttpResponse {
+    let ip = ip.into_inner();
+
+    if crate::utils::unblock_ip(&ip) {
+        HttpResponse::Ok().body(format!("✅ IP {} débloquée", ip))
+    } else {
+        HttpResponse::NotFound().body(format!("❌ IP {} non trouvée ou erreur", ip))
+    }
+}
+
 // Fonction pour enregistrer les routes dans Actix-Web
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_alerts);
     cfg.service(get_blocked);
+    cfg.route("/blocked/{ip}", web::delete().to(delete_blocked));
 }

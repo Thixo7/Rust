@@ -125,3 +125,40 @@ pub fn get_blocked_ips() -> Vec<String> {
 
     ips
 }
+
+pub fn unblock_ip(ip: &str) -> bool {
+    let file = match File::open("blocked_ips.json") {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+
+    let reader = BufReader::new(file);
+    let lines: Vec<String> = reader.lines().flatten().collect();
+
+    let updated: Vec<String> = lines
+        .into_iter()
+        .filter(|line| line.trim() != ip)
+        .collect();
+
+    let mut file = match File::create("blocked_ips.json") {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+
+    for line in updated {
+        let _ = writeln!(file, "{}", line);
+    }
+
+    // Supprime la règle iptables (si présente)
+    let _ = Command::new("sudo")
+        .arg("iptables")
+        .arg("-D")
+        .arg("INPUT")
+        .arg("-s")
+        .arg(ip)
+        .arg("-j")
+        .arg("DROP")
+        .output();
+
+    true
+}
