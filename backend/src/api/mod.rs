@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use std::fs;
-use crate::utils::{Alert, get_blocked_ips, unblock_ip}; // Import de la structure Alert
+use crate::utils::{Alert, get_blocked_ips}; // Import de la structure Alert
 use serde_json;
 
 const ALERTS_FILE: &str = "alerts.json";  // Fichier contenant les alertes
