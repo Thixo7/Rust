@@ -3,128 +3,281 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rust IDS - Dashboard Admin</title>
+  <title>Dashboard Admin - Rust IDS</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f0f2f5;
-      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f5f6fa;
       padding: 20px;
-      color: #333;
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 30px;
+      color: #2c3e50;
     }
 
-    .stats-container {
+    .card-container {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
+      justify-content: space-around;
+      margin-top: 30px;
     }
 
-    .stat-card {
-      background-color: white;
-      border-radius: 12px;
+    .card {
+      background: white;
       padding: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      min-width: 200px;
+      margin: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      width: 220px;
       text-align: center;
     }
 
-    .stat-title {
-      font-size: 1.2em;
-      margin-bottom: 10px;
+    .card h2 {
+      margin: 0;
+      font-size: 36px;
       color: #007bff;
     }
 
-    .stat-value {
-      font-size: 2em;
-      font-weight: bold;
+    .card p {
+      margin: 5px 0 0;
+      color: #555;
     }
 
-    .nav {
+    table {
+      margin: 40px auto;
+      width: 80%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #343a40;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    button {
+      padding: 5px 10px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background-color: #c82333;
+    }
+
+    canvas {
+      background: white;
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+
+    nav {
       text-align: center;
       margin-bottom: 30px;
     }
 
-    .nav a {
+    nav a {
       text-decoration: none;
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      border-radius: 6px;
-      margin: 0 5px;
-    }
-
-    .nav a:hover {
-      background-color: #0056b3;
+      color: #007bff;
+      font-weight: bold;
+      margin: 0 15px;
     }
   </style>
 </head>
 <body>
+  <nav>
+    <a href="index.html">📊 Voir les Alertes</a>
+    <a href="admin.html">🛠️ Tableau de bord Admin</a>
+  </nav>
 
-  <div class="nav">
-    <a href="index.html">🔙 Retour aux alertes</a>
+  <h1>🛡️ Tableau de bord Administrateur</h1>
+
+  <div class="card-container">
+    <div class="card"><h2 id="total">0</h2><p>Total Alertes</p></div>
+    <div class="card"><h2 id="brute">0</h2><p>Brute Force</p></div>
+    <div class="card"><h2 id="success">0</h2><p>Connexions Réussies</p></div>
+    <div class="card"><h2 id="invalid">0</h2><p>Utilisateurs Invalides</p></div>
+    <div class="card"><h2 id="disconnect">0</h2><p>Déconnexions</p></div>
   </div>
 
-  <h1>📊 Tableau de bord IDS</h1>
+  <h2 style="text-align: center; margin-top: 60px;">🚫 IP Bloquées</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="blocked-table-body">
+      <tr><td colspan="2">Chargement...</td></tr>
+    </tbody>
+  </table>
 
-  <div class="stats-container">
-    <div class="stat-card">
-      <div class="stat-title">Total des alertes</div>
-      <div class="stat-value" id="total-alerts">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">Brute Force</div>
-      <div class="stat-value" id="brute-force-count">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">Connexions Réussies</div>
-      <div class="stat-value" id="login-success-count">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">Utilisateurs Invalides</div>
-      <div class="stat-value" id="invalid-user-count">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-title">Déconnexions</div>
-      <div class="stat-value" id="disconnected-count">0</div>
-    </div>
+  <h2 style="text-align: center;">📈 Statistiques Graphiques</h2>
+  <div style="max-width: 800px; margin: auto;">
+    <canvas id="alertTypesChart"></canvas>
+  </div>
+
+  <div style="max-width: 800px; margin: 40px auto;">
+    <canvas id="timeChart"></canvas>
   </div>
 
   <script>
+    let alertChart, timeChart;
+
     async function fetchStats() {
       try {
         const res = await fetch("http://localhost:8080/alerts");
         const alerts = await res.json();
 
-        let total = alerts.length;
-        let brute = 0, login = 0, invalid = 0, disconnect = 0;
+        const count = { total: alerts.length, brute: 0, success: 0, invalid: 0, disconnect: 0 };
+        const typeCounts = {};
+        const perHour = {};
 
         alerts.forEach(a => {
-          switch (a.alert_type) {
-            case "brute_force": brute++; break;
-            case "login_success": login++; break;
-            case "invalid_user": invalid++; break;
-            case "disconnected": disconnect++; break;
-          }
+          if (a.alert_type === "brute_force") count.brute++;
+          if (a.alert_type === "login_success") count.success++;
+          if (a.alert_type === "invalid_user") count.invalid++;
+          if (a.alert_type === "disconnected") count.disconnect++;
+
+          typeCounts[a.alert_type] = (typeCounts[a.alert_type] || 0) + 1;
+
+          const hour = new Date(a.timestamp).toISOString().slice(0, 13).replace("T", "h");
+          perHour[hour] = (perHour[hour] || 0) + 1;
         });
 
-        document.getElementById("total-alerts").textContent = total;
-        document.getElementById("brute-force-count").textContent = brute;
-        document.getElementById("login-success-count").textContent = login;
-        document.getElementById("invalid-user-count").textContent = invalid;
-        document.getElementById("disconnected-count").textContent = disconnect;
+        document.getElementById("total").innerText = count.total;
+        document.getElementById("brute").innerText = count.brute;
+        document.getElementById("success").innerText = count.success;
+        document.getElementById("invalid").innerText = count.invalid;
+        document.getElementById("disconnect").innerText = count.disconnect;
+
+        renderCharts(typeCounts, perHour);
       } catch (err) {
-        console.error("Erreur lors du chargement des statistiques :", err);
+        console.error("Erreur chargement alertes:", err);
       }
     }
 
-    window.addEventListener("DOMContentLoaded", fetchStats);
-  </script>
+    function renderCharts(counts, perHour) {
+      const ctx1 = document.getElementById("alertTypesChart").getContext("2d");
+      const ctx2 = document.getElementById("timeChart").getContext("2d");
 
+      if (alertChart) alertChart.destroy();
+      if (timeChart) timeChart.destroy();
+
+      alertChart = new Chart(ctx1, {
+        type: "bar",
+        data: {
+          labels: ["Brute Force", "Succès", "Utilisateur Invalide", "Déconnexion"],
+          datasets: [{
+            label: "Alertes",
+            data: [
+              counts.brute_force || 0,
+              counts.login_success || 0,
+              counts.invalid_user || 0,
+              counts.disconnected || 0
+            ],
+            backgroundColor: ["#dc3545", "#28a745", "#ffc107", "#6c757d"]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: "Répartition des alertes par type" }
+          }
+        }
+      });
+
+      const sortedTime = Object.keys(perHour).sort();
+      timeChart = new Chart(ctx2, {
+        type: "line",
+        data: {
+          labels: sortedTime,
+          datasets: [{
+            label: "Alertes/h",
+            data: sortedTime.map(k => perHour[k]),
+            borderColor: "#007bff",
+            fill: false,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: "Évolution des alertes dans le temps" }
+          },
+          scales: {
+            x: { title: { display: true, text: "Heure" }},
+            y: { beginAtZero: true, title: { display: true, text: "Nb alertes" }}
+          }
+        }
+      });
+    }
+
+    async function fetchBlocked() {
+      try {
+        const res = await fetch("http://localhost:8080/blocked");
+        const ips = await res.json();
+        const tbody = document.getElementById("blocked-table-body");
+        tbody.innerHTML = "";
+
+        if (ips.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='2'>✅ Aucune IP bloquée</td></tr>";
+          return;
+        }
+
+        ips.forEach(ip => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${ip}</td>
+            <td><button onclick="unblock('${ip}')">Débloquer</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error("Erreur chargement IP bloquées:", e);
+      }
+    }
+
+    async function unblock(ip) {
+      try {
+        const res = await fetch(`http://localhost:8080/blocked/${ip}`, {
+          method: "DELETE"
+        });
+
+        if (res.ok) {
+          alert(`✅ ${ip} débloquée`);
+          fetchBlocked();
+        } else {
+          alert(`❌ Erreur lors du déblocage de ${ip}`);
+        }
+      } catch (e) {
+        alert("❌ Erreur réseau");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      fetchStats();
+      fetchBlocked();
+    });
+  </script>
 </body>
 </html>
