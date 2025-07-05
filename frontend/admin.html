@@ -1,109 +1,130 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Rust IDS - Administration</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rust IDS - Dashboard Admin</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f8f9fa;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
       padding: 20px;
-    }
-    h1 {
-      text-align: center;
       color: #333;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      margin-top: 20px;
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 12px;
-      text-align: left;
+
+    .stats-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
     }
-    th {
-      background-color: #dc3545;
+
+    .stat-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      min-width: 200px;
+      text-align: center;
+    }
+
+    .stat-title {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: #007bff;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+    }
+
+    .nav {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .nav a {
+      text-decoration: none;
+      padding: 10px 20px;
+      background-color: #007bff;
       color: white;
+      border-radius: 6px;
+      margin: 0 5px;
     }
-    button {
-      padding: 6px 12px;
-      background-color: #dc3545;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #c82333;
-    }
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
+
+    .nav a:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <nav style="background-color: #343a40; padding: 10px;">
-   <a href="index.html" style="color: white; margin-right: 20px; text-decoration: none;">📊 Alertes IDS</a>
-   <a href="admin.html" style="color: white; text-decoration: none;">🛠️ Tableau de bord admin</a>
-  </nav>
 
-  <h1>🔒 IP Bloquées - Administration</h1>
+  <div class="nav">
+    <a href="index.html">🔙 Retour aux alertes</a>
+  </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>IP</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="blocked-tbody">
-      <tr><td colspan="2">Chargement...</td></tr>
-    </tbody>
-  </table>
+  <h1>📊 Tableau de bord IDS</h1>
+
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="stat-title">Total des alertes</div>
+      <div class="stat-value" id="total-alerts">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Brute Force</div>
+      <div class="stat-value" id="brute-force-count">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Connexions Réussies</div>
+      <div class="stat-value" id="login-success-count">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Utilisateurs Invalides</div>
+      <div class="stat-value" id="invalid-user-count">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Déconnexions</div>
+      <div class="stat-value" id="disconnected-count">0</div>
+    </div>
+  </div>
 
   <script>
-    async function loadBlockedIPs() {
-      const tbody = document.getElementById("blocked-tbody");
-      tbody.innerHTML = "<tr><td colspan='2'>Chargement...</td></tr>";
-
+    async function fetchStats() {
       try {
-        const response = await fetch("http://localhost:8080/blocked");
-        const ips = await response.json();
+        const res = await fetch("http://localhost:8080/alerts");
+        const alerts = await res.json();
 
-        if (ips.length === 0) {
-          tbody.innerHTML = "<tr><td colspan='2'>Aucune IP bloquée</td></tr>";
-          return;
-        }
+        let total = alerts.length;
+        let brute = 0, login = 0, invalid = 0, disconnect = 0;
 
-        tbody.innerHTML = "";
-        ips.forEach(ip => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${ip}</td>
-            <td><button onclick="unblockIP('${ip}')">Débloquer</button></td>
-          `;
-          tbody.appendChild(row);
+        alerts.forEach(a => {
+          switch (a.alert_type) {
+            case "brute_force": brute++; break;
+            case "login_success": login++; break;
+            case "invalid_user": invalid++; break;
+            case "disconnected": disconnect++; break;
+          }
         });
+
+        document.getElementById("total-alerts").textContent = total;
+        document.getElementById("brute-force-count").textContent = brute;
+        document.getElementById("login-success-count").textContent = login;
+        document.getElementById("invalid-user-count").textContent = invalid;
+        document.getElementById("disconnected-count").textContent = disconnect;
       } catch (err) {
-        console.error("Erreur lors du chargement des IP bloquées:", err);
-        tbody.innerHTML = "<tr><td colspan='2'>❌ Erreur de chargement</td></tr>";
+        console.error("Erreur lors du chargement des statistiques :", err);
       }
     }
 
-    async function unblockIP(ip) {
-      const res = await fetch(`http://localhost:8080/blocked/${ip}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        loadBlockedIPs();
-      } else {
-        alert("❌ Impossible de débloquer cette IP.");
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", loadBlockedIPs);
+    window.addEventListener("DOMContentLoaded", fetchStats);
   </script>
+
 </body>
 </html>
