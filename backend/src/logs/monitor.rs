@@ -15,11 +15,11 @@ const TIME_WINDOW_SECONDS: i64 = 120;
 const ALERT_COOLDOWN_MINUTES: i64 = 5;
 
 #[derive(Serialize, Deserialize)]
-struct Alert {
-    ip: String,
-    message: String,
-    timestamp: String,
-    alert_type: String,
+pub struct Alert {
+    pub ip: String,
+    pub message: String,
+    pub timestamp: String,
+    pub alert_type: String,
 }
 
 pub fn start_monitoring() {

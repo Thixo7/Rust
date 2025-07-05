@@ -1,14 +1,104 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Rust IDS - Interface Web</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rust IDS - Alertes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    select {
+      padding: 8px;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #dee2e6;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+  </style>
 </head>
 <body>
-    <h2>Chargement de l'interface...</h2>
-    <script type="module">
-        import init from "./pkg/frontend.js";
-        init();
-    </script>
+  <h1>📊 Alertes IDS</h1>
+
+  <label for="filter">Filtrer par type :</label>
+  <select id="filter">
+    <option value="">Toutes</option>
+    <option value="brute_force">Brute Force</option>
+    <option value="login_success">Connexion Réussie</option>
+    <option value="invalid_user">Utilisateur Invalide</option>
+    <option value="disconnected">Déconnexion</option>
+  </select>
+
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Message</th>
+        <th>Horodatage</th>
+      </tr>
+    </thead>
+    <tbody id="alerts-table-body">
+      <!-- Les alertes s'affichent ici -->
+    </tbody>
+  </table>
+
+  <script>
+    const filterSelect = document.getElementById("filter");
+    const tbody = document.getElementById("alerts-table-body");
+
+    // Fonction pour charger et afficher les alertes selon le filtre sélectionné
+    async function loadAlerts() {
+      const type = filterSelect.value;
+      let url = "http://localhost:8080/alerts";
+      if (type) url += `?alert_type=${type}`;
+
+      try {
+        const res = await fetch(url);
+        const alerts = await res.json();
+
+        tbody.innerHTML = ""; // Efface les anciennes alertes
+
+        alerts.forEach(alert => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${alert.ip}</td>
+            <td>${alert.message}</td>
+            <td>${alert.timestamp}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        console.error("Erreur lors du chargement des alertes:", err);
+        tbody.innerHTML = `<tr><td colspan="3">❌ Impossible de charger les alertes</td></tr>`;
+      }
+    }
+
+    // 🔁 Recharge les alertes au changement du menu déroulant
+    filterSelect.addEventListener("change", loadAlerts);
+
+    // 📦 Chargement initial au démarrage
+    window.addEventListener("DOMContentLoaded", loadAlerts);
+  </script>
 </body>
 </html>
