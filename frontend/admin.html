@@ -149,7 +149,7 @@
 
         const count = { total: alerts.length, brute: 0, success: 0, invalid: 0, disconnect: 0 };
         const typeCounts = {};
-        const perHour = {};
+        const perTimeSlot = {};
 
         alerts.forEach(a => {
           if (a.alert_type === "brute_force") count.brute++;
@@ -159,8 +159,11 @@
 
           typeCounts[a.alert_type] = (typeCounts[a.alert_type] || 0) + 1;
 
-          const hour = new Date(a.timestamp).toISOString().slice(0, 13).replace("T", "h");
-          perHour[hour] = (perHour[hour] || 0) + 1;
+          const date = new Date(a.timestamp);
+          const hour = date.getHours().toString().padStart(2, '0');
+          const minutes = Math.floor(date.getMinutes() / 15) * 15;
+          const label = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')} ${hour}h${minutes.toString().padStart(2, '0')}`;
+          perTimeSlot[label] = (perTimeSlot[label] || 0) + 1;
         });
 
         document.getElementById("total").innerText = count.total;
@@ -169,13 +172,13 @@
         document.getElementById("invalid").innerText = count.invalid;
         document.getElementById("disconnect").innerText = count.disconnect;
 
-        renderCharts(typeCounts, perHour);
+        renderCharts(typeCounts, perTimeSlot);
       } catch (err) {
         console.error("Erreur chargement alertes:", err);
       }
     }
 
-    function renderCharts(counts, perHour) {
+    function renderCharts(counts, perTimeSlot) {
       const ctx1 = document.getElementById("alertTypesChart").getContext("2d");
       const ctx2 = document.getElementById("timeChart").getContext("2d");
 
@@ -206,23 +209,26 @@
         }
       });
 
-      const sortedTime = Object.keys(perHour).sort();
+      const sortedLabels = Object.keys(perTimeSlot).sort();
       timeChart = new Chart(ctx2, {
         type: "line",
         data: {
-          labels: sortedTime,
+          labels: sortedLabels,
           datasets: [{
-            label: "Alertes/h",
-            data: sortedTime.map(k => perHour[k]),
+            label: "Alertes / 15min",
+            data: sortedLabels.map(k => perTimeSlot[k]),
             borderColor: "#007bff",
-            fill: false,
-            tension: 0.3
+            backgroundColor: "rgba(0,123,255,0.1)",
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: "#007bff",
+            pointRadius: 4
           }]
         },
         options: {
           responsive: true,
           plugins: {
-            title: { display: true, text: "Évolution des alertes dans le temps" }
+            title: { display: true, text: "Évolution des alertes dans le temps (15min)" }
           },
           scales: {
             x: { title: { display: true, text: "Heure" }},
