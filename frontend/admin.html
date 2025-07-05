@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rust IDS - Administration</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #dc3545;
+      color: white;
+    }
+    button {
+      padding: 6px 12px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #c82333;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔒 IP Bloquées - Administration</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="blocked-tbody">
+      <tr><td colspan="2">Chargement...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function loadBlockedIPs() {
+      const tbody = document.getElementById("blocked-tbody");
+      tbody.innerHTML = "<tr><td colspan='2'>Chargement...</td></tr>";
+
+      try {
+        const response = await fetch("http://localhost:8080/blocked");
+        const ips = await response.json();
+
+        if (ips.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='2'>Aucune IP bloquée</td></tr>";
+          return;
+        }
+
+        tbody.innerHTML = "";
+        ips.forEach(ip => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${ip}</td>
+            <td><button onclick="unblockIP('${ip}')">Débloquer</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        console.error("Erreur lors du chargement des IP bloquées:", err);
+        tbody.innerHTML = "<tr><td colspan='2'>❌ Erreur de chargement</td></tr>";
+      }
+    }
+
+    async function unblockIP(ip) {
+      const res = await fetch(`http://localhost:8080/blocked/${ip}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        loadBlockedIPs();
+      } else {
+        alert("❌ Impossible de débloquer cette IP.");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadBlockedIPs);
+  </script>
+</body>
+</html>
