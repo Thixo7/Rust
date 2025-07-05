@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rust IDS - Alertes</title>
+  <link rel="icon" type="image/png" href="favicon.ico"/>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -36,12 +37,23 @@
     tr:nth-child(even) {
       background-color: #f2f2f2;
     }
+    nav {
+      background-color: #343a40;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    nav a {
+      color: white;
+      margin-right: 20px;
+      text-decoration: none;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <nav style="background-color: #343a40; padding: 10px;">
-   <a href="index.html" style="color: white; margin-right: 20px; text-decoration: none;">📊 Alertes IDS</a>
-   <a href="admin.html" style="color: white; text-decoration: none;">🛠️ Tableau de bord admin</a>
+  <nav>
+    <a href="index.html">📊 Alertes IDS</a>
+    <a href="admin.html">🛠️ Tableau de bord admin</a>
   </nav>
 
   <h1>📊 Alertes IDS</h1>
@@ -72,7 +84,6 @@
     const filterSelect = document.getElementById("filter");
     const tbody = document.getElementById("alerts-table-body");
 
-    // Fonction pour charger et afficher les alertes selon le filtre sélectionné
     async function loadAlerts() {
       const type = filterSelect.value;
       let url = "http://localhost:8080/alerts";
@@ -82,14 +93,24 @@
         const res = await fetch(url);
         const alerts = await res.json();
 
-        tbody.innerHTML = ""; // Efface les anciennes alertes
+        tbody.innerHTML = ""; // Réinitialise
 
         alerts.forEach(alert => {
+          const date = new Date(alert.timestamp);
+          const formattedDate = date.toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+
           const row = document.createElement("tr");
           row.innerHTML = `
             <td>${alert.ip}</td>
             <td>${alert.message}</td>
-            <td>${alert.timestamp}</td>
+            <td>${formattedDate}</td>
           `;
           tbody.appendChild(row);
         });
@@ -99,10 +120,7 @@
       }
     }
 
-    // 🔁 Recharge les alertes au changement du menu déroulant
     filterSelect.addEventListener("change", loadAlerts);
-
-    // 📦 Chargement initial au démarrage
     window.addEventListener("DOMContentLoaded", loadAlerts);
   </script>
 </body>
